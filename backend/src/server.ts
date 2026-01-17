@@ -13,10 +13,33 @@ import documentRoutes from "./routes/document.routes";
 const app: Application = express();
 
 // CORS Setup
+// app.use(
+//   cors({
+//     origin: "http://localhost:5173", // your client
+//     credentials: true,               // allow cookies/auth headers
+//     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+//     allowedHeaders: ["Content-Type", "Authorization"],
+//   })
+// );
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://chatwithpdf-iw0z.onrender.com",
+];
+
 app.use(
   cors({
-    origin: "http://localhost:5173", // your client
-    credentials: true,               // allow cookies/auth headers
+    origin: function (origin, callback) {
+      // allow requests with no origin (Postman, mobile apps)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
