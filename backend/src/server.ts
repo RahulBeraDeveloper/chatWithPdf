@@ -24,7 +24,7 @@ const app: Application = express();
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://chatwithpdf-iw0z.onrender.com",
+  "https://chatwithpdf-iw0z.onrender.com/",
 ];
 
 app.use(
