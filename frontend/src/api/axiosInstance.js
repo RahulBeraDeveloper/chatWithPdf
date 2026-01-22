@@ -1,7 +1,13 @@
 import axios from 'axios'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+
+if (!API_BASE_URL) {
+  console.error('❌ VITE_API_BASE_URL is not defined')
+}
+
 const axiosInstance = axios.create({
-  baseURL: 'https://chat-withpdf-backend.onrender.com',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
