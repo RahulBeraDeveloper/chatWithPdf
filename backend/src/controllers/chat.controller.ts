@@ -31,30 +31,34 @@ export const askQuestion = async (req: Request, res: Response) => {
   try {
     const { sessionId, question } = req.body;
 
-    // Save user question
+    // Save user message
     await ChatMessage.create({
       sessionId,
       role: "user",
       message: question,
     });
 
-    // Get AI answer using RAG service
-    const answer = await ragService.askQuestion(sessionId, question);
+    // Get AI result
+    const result = await ragService.askQuestion(sessionId, question);
 
-    // Save assistant answer
-await ChatMessage.create(<any>{
-  sessionId,
-  role: "assistant",
-  message: answer,
-});
+    // Save ONLY the answer string
+    await ChatMessage.create({
+      sessionId,
+      role: "assistant",
+      message: result.answer,  // FIXED
+    });
 
-    res.json({ answer });
+    // Send both answer + followUp to frontend
+    res.json({
+      answer: result.answer,
+      followUp: result.followUp,
+    });
+
   } catch (err) {
-    console.error(err);
+    console.error("askQuestion error:", err);
     res.status(500).json({ message: "Failed to answer question" });
   }
 };
-
 // Get all chat sessions for a user (to display in left sidebar)
 
 

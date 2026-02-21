@@ -1,7 +1,9 @@
 
 import { createClient } from "@supabase/supabase-js";
+   
 
 const supabaseUrl = process.env.SUPABASE_URL!;
+ console.log("SUPABASE URL FROM ENV:", supabaseUrl);
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // ⚠️ Service role key REQUIRED (bypasses RLS)
