@@ -7,6 +7,7 @@ import supabase from "../config/supabase";
 
   export const uploadPdf = async (req: Request, res: Response) => {
   try {
+  
     const userId = (req as any).user?.userId;
 
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
@@ -42,8 +43,8 @@ import supabase from "../config/supabase";
     return res.status(201).json({
       message: "PDF uploaded",
       document: doc,
-    });
-  }
+    });                                                                                                                 
+  }                                                                                           
   catch (err: any) {
   console.error(" uploadPdf error FULL:", err);
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react'
 import {
   Upload,
@@ -28,6 +27,8 @@ import {
   deleteDocumentApi
 } from '../api/authApi'
 import { useNavigate } from 'react-router-dom'
+import Loader from '../components/Loader.jsx'
+import { showError } from '../utils/alert'
 import '../App.css'
 // --- COLORS ---
 const LIGHT_PRIMARY = '#4F1C51'
@@ -44,7 +45,7 @@ const ChatInterFace = () => {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [showProfile, setShowProfile] = useState(false)
-
+const [pageLoading, setPageLoading] = useState(true)
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light')
   const [chatSessionId, setChatSessionId] = useState(null)
 
@@ -81,7 +82,13 @@ const navigate = useNavigate()
       setHasNextPage(true)
     }
   }, [loading, user])
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setPageLoading(false)
+  }, 1500) // 1.5 sec entry loader
 
+  return () => clearTimeout(timer)
+}, [])
   /* ================= AUTOSCROLL ================= */
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -125,43 +132,6 @@ isFetchingRef.current = true
 
   /* ================= PDF UPLOAD ================= */
 
-// const handleFileUpload = async (file) => {
-//   if (!file) return
-
-//   try {
-//     const uploadRes = await uploadPdfApi(file)
-//     const documentId = uploadRes.data.document._id
-
-//     await processPdfApi(documentId)
-
-//     const sessionRes = await createChatSessionApi(documentId, file.name)
-//     const session = sessionRes.data.session
-
-//     // ✅ UPDATE SIDEBAR IMMEDIATELY
-//     setSessions(prev => {
-//       const exists = prev.some(s => s._id === session._id)
-//       if (exists) return prev
-//       return [session, ...prev]
-//     })
-
-//     setChatSessionId(session._id)
-//     setCurrentPdf({
-//       name: session.title,
-//       documentId: session.documentId,
-//     })
-
-//     setMessages([
-//       {
-//         role: 'assistant',
-//         content: `📄 **${file.name}** uploaded successfully! Ask me anything about it.`,
-//       },
-//     ])
-
-//   } catch (err) {
-//     console.error(err)
-//     alert('PDF upload failed')
-//   }
-// }
 useEffect(() => {
   const saved = localStorage.getItem('activeChat')
   if (!saved || loading) return
@@ -182,6 +152,14 @@ useEffect(() => {
     })
   }
 }, [loading])
+
+if (pageLoading) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <Loader />
+    </div>
+  )
+}
 
 const handleFileUpload = async (file) => {
   if (!file) return
@@ -229,7 +207,7 @@ const handleFileUpload = async (file) => {
     )
   } catch (err) {
     console.error(err)
-    alert('PDF upload failed')
+  showError(err.response?.data?.message || 'PDF upload failed')
   } finally {
     setPdfLoading(false)  // 🟢 STOP LOADER
   }
@@ -268,21 +246,7 @@ const handleFileUpload = async (file) => {
   }
 
   /* ================= OPEN SESSION ================= */
-  // const openSession = async (session) => {
-  //   setChatSessionId(session._id)
-  //   setCurrentPdf({
-  //     name: session.title,
-  //     documentId: session.documentId,
-  //   })
 
-  //   const res = await fetchMessagesApi(session._id)
-  //   setMessages(
-  //     res.data.messages.map((m) => ({
-  //       role: m.role,
-  //       content: m.message,
-  //     }))
-  //   )
-  // }
 
   const openSession = async (session) => {
   setChatSessionId(session._id)
@@ -325,7 +289,7 @@ const SidebarSkeleton = () => (
 
   /* ================= DELETE SESSION ================= */
 
-const handleDeleteChat = async (session) => {
+  const handleDeleteChat = async (session) => {
   const result = await Swal.fire({
     title: 'Delete chat?',
     text: 'This will permanently delete this chat.',
@@ -341,16 +305,16 @@ const handleDeleteChat = async (session) => {
     await deleteDocumentApi(session.documentId)
 
     // ✅ Remove from sidebar instantly
-    setSessions(prev => prev.filter(s => s.documentId !== session.documentId))
+    setSessions(prev => prev.filter(s => s._id !== session._id))
 
-    // ✅ Reset chat if open
-    if (chatSessionId === session.documentId) {
+    // ✅ If currently opened chat is deleted → reset UI immediately
+    if (chatSessionId === session._id) {
       setChatSessionId(null)
       setCurrentPdf(null)
       setMessages([])
+      localStorage.removeItem('activeChat')
     }
 
-    // ✅ SUCCESS FEEDBACK
     Swal.fire({
       icon: 'success',
       title: 'Deleted!',
