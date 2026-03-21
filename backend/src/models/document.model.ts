@@ -5,6 +5,7 @@ export interface IDocument extends Document {
   userId: Types.ObjectId;
   originalName: string;
   storagePath: string;
+  fileUrl: string;
   processed: boolean;
   textLength: number;
 }
@@ -14,6 +15,7 @@ const DocumentSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     originalName: { type: String, required: true },
     storagePath: { type: String, required: true },
+    fileUrl: { type: String, default: "" },
     processed: { type: Boolean, default: false },
     textLength: { type: Number, default: 0 },
   },

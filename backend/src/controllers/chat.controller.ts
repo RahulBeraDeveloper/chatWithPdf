@@ -1,4 +1,5 @@
 
+
 import { Request, Response } from "express";
 import ChatSession from "../models/chatSession.model";
 import ChatMessage from "../models/chatMessage.model";
@@ -6,12 +7,13 @@ import ragService from "../services/rag.service";
 import mongoose from "mongoose";
 import DocumentModel from "../models/document.model";
 import Vector from "../models/vector.model";
-import supabase from "../config/supabase";
+import cloudinary from "../config/cloudinary";
+
 // Create a new chat session for a PDF
 export const createChatSession = async (req: Request, res: Response) => {
   try {
     const { documentId, title } = req.body;
-    const userId = (req as any).user.userId; // ensure auth middleware sets req.user
+    const userId = (req as any).user.userId;
 
     const session = await ChatSession.create({
       userId,
@@ -45,7 +47,7 @@ export const askQuestion = async (req: Request, res: Response) => {
     await ChatMessage.create({
       sessionId,
       role: "assistant",
-      message: result.answer,  // FIXED
+      message: result.answer,
     });
 
     // Send both answer + followUp to frontend
@@ -59,23 +61,20 @@ export const askQuestion = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Failed to answer question" });
   }
 };
+
 // Get all chat sessions for a user (to display in left sidebar)
-
-
 export const getUserSessions = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
 
-    // Read query params with defaults
     const page = Math.max(parseInt(req.query.page as string) || 1, 1);
     const pageSize = Math.min(
       Math.max(parseInt(req.query.pageSize as string) || 20, 1),
-      100 // safety cap
+      100
     );
 
     const skip = (page - 1) * pageSize;
 
-    //Parallel queries (fast)
     const [sessions, total] = await Promise.all([
       ChatSession.find({ userId })
         .sort({ createdAt: -1 })
@@ -102,7 +101,6 @@ export const getUserSessions = async (req: Request, res: Response) => {
   }
 };
 
-
 // Get messages for a specific chat session
 export const getSessionMessages = async (req: Request, res: Response) => {
   try {
@@ -116,18 +114,15 @@ export const getSessionMessages = async (req: Request, res: Response) => {
   }
 };
 
-
 export const deleteDocument = async (req: Request, res: Response) => {
   try {
     const { documentId } = req.params;
     const userId = (req as any).user.userId;
 
-    //  Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(documentId)) {
       return res.status(400).json({ message: "Invalid documentId" });
     }
 
-    // Find document (ownership check)
     const document = await DocumentModel.findOne({
       _id: documentId,
       userId,
@@ -137,37 +132,34 @@ export const deleteDocument = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Document not found" });
     }
 
-    //  1. Find all chat sessions for this document
+    // 1. Find all chat sessions for this document
     const sessions = await ChatSession.find({ documentId });
-
     const sessionIds = sessions.map(s => s._id);
 
-    //  2. Delete all chat messages
+    // 2. Delete all chat messages
     if (sessionIds.length > 0) {
-      await ChatMessage.deleteMany({
-        sessionId: { $in: sessionIds },
-      });
+      await ChatMessage.deleteMany({ sessionId: { $in: sessionIds } });
     }
 
-    //  3. Delete chat sessions
+    // 3. Delete chat sessions
     await ChatSession.deleteMany({ documentId });
 
-    //  4. Delete vector embeddings
+    // 4. Delete vector embeddings
     await Vector.deleteMany({ documentId });
 
-    //  5. Delete PDF from Supabase
-    await supabase.storage
-      .from("pdfs")
-      .remove([document.storagePath]);
+    // 5. Delete PDF from Cloudinary
+    await cloudinary.uploader.destroy(document.storagePath, {
+      resource_type: "raw",
+    });
 
-    //  6. Delete document metadata
+    // 6. Delete document metadata
     await DocumentModel.deleteOne({ _id: documentId });
 
     return res.json({
       message: "Document and all related data deleted successfully",
     });
   } catch (err: any) {
-    console.error(" deleteDocument error:", err);
+    console.error("deleteDocument error:", err);
     return res.status(500).json({
       message: "Failed to delete document",
       error: err.message,

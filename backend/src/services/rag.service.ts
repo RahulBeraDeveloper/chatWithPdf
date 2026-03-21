@@ -1,3 +1,4 @@
+
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import embeddingService from "./embedding.service";
 import vectorService from "./vector.service";
@@ -22,9 +23,7 @@ export default {
       question = question.trim().slice(0, MAX_QUESTION_LENGTH);
 
       const session = await ChatSession.findById(sessionId).lean();
-      if (!session) {
-        throw new Error("Session not found");
-      }
+      if (!session) throw new Error("Session not found");
 
       /* ------------------ Chat History ------------------ */
       const history = await ChatMessage.find({ sessionId })
@@ -36,7 +35,6 @@ export default {
 
       /* ------------------ Embedding ------------------ */
       let queryVector: number[];
-
       try {
         queryVector = await embeddingService.embedText(question);
       } catch (err) {
@@ -46,14 +44,12 @@ export default {
 
       /* ------------------ Vector Search ------------------ */
       let context = "";
-
       try {
         const results = await vectorService.searchEmbeddings(
           session.documentId,
           queryVector,
-          5
+          10
         );
-
         if (Array.isArray(results) && results.length > 0) {
           context = results
             .map((r: any) => r?.text || "")
@@ -66,9 +62,7 @@ export default {
 
       context = context.slice(0, MAX_CONTEXT_CHARS);
 
-      if (!process.env.GEMINI_API_KEY) {
-        throw new Error("Missing GEMINI_API_KEY");
-      }
+      if (!process.env.GEMINI_API_KEY) throw new Error("Missing GEMINI_API_KEY");
 
       const model = new ChatGoogleGenerativeAI({
         apiKey: process.env.GEMINI_API_KEY,
@@ -81,27 +75,22 @@ export default {
         {
           role: "system",
           content: `
-You are a PDF assistant.
+You are a PDF assistant. Answer questions based ONLY on the provided PDF context.
 
-Strict Rules:
+Rules:
 - Answer ONLY using the provided PDF context.
-- If answer is not in context say:
-  "I couldn't find that in the document."
-- Do NOT hallucinate.
-- Do NOT use external knowledge.
+- If the answer is not in the context, say exactly: "I couldn't find that in the document."
+- Do NOT hallucinate or use external knowledge.
 - After answering, suggest ONE short relevant follow-up question based only on the PDF.
 - If no answer is found, followUp must be an empty string.
-- Respond strictly in JSON format:
 
-{
-  "answer": "string",
-  "followUp": "string"
-}
+You MUST respond ONLY with valid JSON. No markdown, no explanation, just this exact format:
+{"answer": "your answer here", "followUp": "follow up question or empty string"}
           `,
         },
       ];
 
-      // Inject chat history properly
+      // Inject chat history
       orderedHistory.forEach((m: any) => {
         messages.push({
           role: m.role === "assistant" ? "assistant" : "user",
@@ -118,6 +107,8 @@ ${context || "No relevant context found."}
 
 QUESTION:
 ${question}
+
+Remember: respond ONLY with JSON in this format: {"answer": "...", "followUp": "..."}
         `,
       });
 
@@ -133,23 +124,35 @@ ${question}
       let answer = "I couldn't find that in the document.";
       let followUp = "";
 
-      try {
-        const raw =
-          typeof response.content === "string"
-            ? response.content
-            : Array.isArray(response.content)
-            ? response.content.map((c: any) => c.text || "").join("")
-            : "";
+      const raw =
+        typeof response.content === "string"
+          ? response.content
+          : Array.isArray(response.content)
+          ? response.content.map((c: any) => c.text || "").join("")
+          : "";
 
-        const cleaned = raw.trim().replace(/```json|```/g, "");
+      // Try to extract JSON — handle cases where model wraps in markdown or plain text
+      try {
+        // Strip markdown code fences if present
+        let cleaned = raw.trim().replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+
+        // Try to find JSON object in the response even if surrounded by text
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleaned = jsonMatch[0];
+        }
 
         const parsed = JSON.parse(cleaned);
-
         answer = parsed.answer || answer;
         followUp = parsed.followUp || "";
 
       } catch (err) {
-        console.error("Failed to parse model JSON:", err);
+        // JSON parsing failed — model returned plain text
+        // Use the raw response as the answer directly
+        console.warn("Model returned plain text instead of JSON, using raw response");
+        if (raw.trim()) {
+          answer = raw.trim();
+        }
       }
 
       return {
@@ -159,7 +162,6 @@ ${question}
 
     } catch (err) {
       console.error("askQuestion service error:", err);
-
       return {
         answer: "Sorry, something went wrong while generating the answer.",
         followUp: "",
