@@ -24,13 +24,14 @@
 //     EMBED_BATCH_SIZE: 5,
 //   },
 // } as const;
+
 export const AI_CONFIG = {
   rag: {
     MAX_HISTORY_MESSAGES: 8,
-    MAX_CONTEXT_CHARS: 12000,   // increased from 6000 — more context for the model
+    MAX_CONTEXT_CHARS: 12000,
     MAX_QUESTION_LENGTH: 1000,
-    MODEL_TIMEOUT: 60000,
-    MODEL_NAME: "gemini-2.5-flash",
+    MODEL_TIMEOUT: 30000,
+    MODEL_NAME: "gemini-1.5-flash-latest",
     TEMPERATURE: 0.2,
   },
 
@@ -45,7 +46,7 @@ export const AI_CONFIG = {
 
   document: {
     MIN_TEXT_LENGTH: 50,
-    CHUNK_SIZE: 1500,           // increased from 500 — keeps table rows together
+    CHUNK_SIZE: 1500,
     MAX_TEXT_LENGTH: 500_000,
     EMBED_BATCH_SIZE: 5,
   },
