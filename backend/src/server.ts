@@ -10,6 +10,7 @@ import authRoutes from "./routes/auth.routes";
 import pdfRoutes from "./routes/pdf.routes";
 import chatRoutes from "./routes/chat.routes";
 import documentRoutes from "./routes/document.routes";
+import profileRoutes from "./routes/profile.routes";
 import { APP_CONFIG } from "./config/app.config";
 const app: Application = express();
 
@@ -50,6 +51,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/pdf", pdfRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/document", documentRoutes);
+app.use("/api/profile", profileRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;

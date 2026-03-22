@@ -401,15 +401,34 @@ const handleLogout = async () => {
           )}
         </button>
 
-        <div onClick={() => setShowProfile(true)} className="flex items-center gap-2 cursor-pointer">
-          <span style={{ color: TEXT_COLOR }}>{user?.name || 'User'}</span>
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white"
-            style={{ backgroundColor: PRIMARY_COLOR }}
-          >
-            <User size={16} />
-          </div>
-        </div>
+      <div onClick={() => setShowProfile(true)} className="flex items-center gap-2 cursor-pointer">
+  <span style={{ color: TEXT_COLOR }}>{user?.name || 'User'}</span>
+  <div
+    className="w-8 h-8 rounded-full overflow-hidden border-2 flex items-center justify-center flex-shrink-0"
+    style={{ borderColor: PRIMARY_COLOR }}
+  >
+    {user?.photo || user?.photoUrl ? (
+      <img
+        src={user?.photo || user?.photoUrl}
+        alt="avatar"
+        className="w-full h-full object-cover"
+        onError={(e) => {
+          e.target.style.display = 'none'
+          e.target.nextSibling.style.display = 'flex'
+        }}
+      />
+    ) : null}
+    <div
+      className="w-full h-full items-center justify-center text-white font-bold text-sm"
+      style={{
+        backgroundColor: PRIMARY_COLOR,
+        display: (user?.photo || user?.photoUrl) ? 'none' : 'flex'
+      }}
+    >
+      {user?.name?.charAt(0)?.toUpperCase() || <User size={16} />}
+    </div>
+  </div>
+</div>
       </div>
     </header>
   )

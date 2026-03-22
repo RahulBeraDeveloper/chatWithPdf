@@ -8,13 +8,14 @@
 //       user: null,
 //       token: null,
 //       isAuthenticated: false,
-//       loading: false,
+//       loading: true, // 🔥 important
 
 //       setUser: (userData, token = null) =>
 //         set({
 //           user: userData,
 //           token,
 //           isAuthenticated: true,
+//           loading: false,
 //         }),
 
 //       clearUser: () =>
@@ -22,12 +23,17 @@
 //           user: null,
 //           token: null,
 //           isAuthenticated: false,
+//           loading: false,
 //         }),
 
 //       setLoading: (loading) => set({ loading }),
 //     }),
 //     {
-//       name: "auth-storage", // stored in localStorage
+//       name: "auth-storage",
+//       onRehydrateStorage: () => (state) => {
+//         // 🔥 tells app that Zustand is ready
+//         state?.setLoading(false)
+//       },
 //     }
 //   )
 // )
@@ -42,7 +48,7 @@ const useAuthStore = create(
       user: null,
       token: null,
       isAuthenticated: false,
-      loading: true, // 🔥 important
+      loading: false, // always start false
 
       setUser: (userData, token = null) =>
         set({
@@ -64,10 +70,12 @@ const useAuthStore = create(
     }),
     {
       name: "auth-storage",
-      onRehydrateStorage: () => (state) => {
-        // 🔥 tells app that Zustand is ready
-        state?.setLoading(false)
-      },
+      // ✅ Only persist these 3 — never persist loading
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 )
